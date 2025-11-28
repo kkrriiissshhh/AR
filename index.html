@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AR Measure</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Start Screen -->
+    <div id="intro-screen">
+        <h1>AR Ruler</h1>
+        <p>Measure real-world distances with your camera.</p>
+        <button id="start-btn">Start Measurement</button>
+        <p class="small">Requires Chrome on Android or WebXR Viewer.</p>
+    </div>
+
+    <!-- Main AR Overlay UI (Hidden initially) -->
+    <div id="ar-ui" style="display: none;">
+        
+        <!-- Crosshair in center -->
+        <div id="reticle-center"></div>
+
+        <!-- Tutorial Overlay -->
+        <div id="tutorial-overlay">
+            <p id="instruction-text">Aim at floor/wall to detect surface.</p>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="panel bottom-panel">
+            <div class="measure-row">
+                <span>P1:</span> <span id="p1-coord">---</span>
+            </div>
+            <div class="measure-row">
+                <span>P2:</span> <span id="p2-coord">---</span>
+            </div>
+            <hr>
+            <div class="result-row">
+                <span class="label">Distance</span>
+                <span id="distance-value">0.00</span>
+                
+                <!-- Unit Switcher -->
+                <select id="unit-selector">
+                    <option value="m">m</option>
+                    <option value="cm">cm</option>
+                    <option value="in">in</option>
+                    <option value="ft">ft</option>
+                </select>
+            </div>
+            
+            <!-- Controls -->
+            <div class="button-row">
+                <button id="action-btn" class="primary-btn">Set Point 1</button>
+                <button id="reset-btn" class="secondary-btn">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Map (For Three.js) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Main Logic -->
+    <script type="module" src="script.js"></script>
+
+</body>
+</html>
