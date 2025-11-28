@@ -3,61 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AR Measure</title>
-    <link rel="stylesheet" href="style.css">
+    <title>AR Measure Tool</title>
+    <style>
+        /* CSS STYLES */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            color: white;
+        }
+
+        /* 1. START SCREEN */
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #start-screen h1 { margin-bottom: 10px; font-size: 2rem; }
+        #start-screen p { color: #aaa; margin-bottom: 30px; }
+        
+        button.big-btn {
+            background: white; color: black;
+            border: none; padding: 15px 40px;
+            font-size: 1.2rem; border-radius: 50px;
+            font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.2);
+        }
+        button.big-btn:active { transform: scale(0.95); }
+
+        /* 2. AR OVERLAY (UI ON TOP OF CAMERA) */
+        #ar-overlay {
+            display: none; /* Hidden until AR starts */
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            /* Important: Allow clicks on buttons, but let camera touches pass through empty areas */
+            pointer-events: none; 
+            box-sizing: border-box;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 20px;
+            text-align: center;
+            pointer-events: auto;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+        }
+
+        #instruction {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Center Aim */
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px; height: 8px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 5px black;
+            opacity: 0.8;
+            z-index: 10;
+        }
+
+        /* Bottom Controls */
+        #bottom-panel {
+            position: absolute; bottom: 20px; left: 20px; right: 20px;
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            pointer-events: auto; /* Enable clicks */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .result-container {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        .distance-display {
+            font-size: 2rem; font-weight: bold; color: #4facfe;
+            font-family: monospace;
+        }
+
+        .select-unit {
+            padding: 5px 10px; font-size: 1rem; border-radius: 8px; border: none; outline: none;
+        }
+
+        .btn-row { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+
+        button.action-btn {
+            background: #4facfe; color: white;
+            border: none; padding: 15px;
+            border-radius: 10px; font-size: 1rem; font-weight: bold;
+        }
+        
+        button.reset-btn {
+            background: #444; color: white;
+            border: none; padding: 15px;
+            border-radius: 10px; font-size: 1rem;
+        }
+
+        /* Troubleshooting message */
+        #error-msg { color: #ff6b6b; font-size: 0.9rem; margin-top: 20px; display: none; }
+
+    </style>
 </head>
 <body>
 
-    <!-- Start Screen -->
-    <div id="intro-screen">
+    <!-- SECTION: Start Screen -->
+    <div id="start-screen">
         <h1>AR Ruler</h1>
-        <p>Measure real-world distances with your camera.</p>
-        <button id="start-btn">Start Measurement</button>
-        <p class="small">Requires Chrome on Android or WebXR Viewer.</p>
+        <p>Measure distance between two points.</p>
+        <button id="start-ar-btn" class="big-btn">Start Camera</button>
+        <div id="error-msg"></div>
+        <p style="font-size: 0.8rem; margin-top: 30px; opacity: 0.5;">
+            Requires Chrome (Android) or WebXR Viewer (iOS).<br>
+            Aim at floor and move phone slowly to detect surface.
+        </p>
     </div>
 
-    <!-- Main AR Overlay UI (Hidden initially) -->
-    <div id="ar-ui" style="display: none;">
+    <!-- SECTION: AR UI (Overlaid on Camera) -->
+    <!-- We wrap the whole UI in a specific div for "dom-overlay" -->
+    <div id="ar-overlay">
         
-        <!-- Crosshair in center -->
-        <div id="reticle-center"></div>
-
-        <!-- Tutorial Overlay -->
-        <div id="tutorial-overlay">
-            <p id="instruction-text">Aim at floor/wall to detect surface.</p>
+        <!-- Top Instruction -->
+        <div id="top-bar">
+            <span id="instruction">Wait for tracking... move phone slowly</span>
         </div>
 
-        <!-- Info Panel -->
-        <div class="panel bottom-panel">
-            <div class="measure-row">
-                <span>P1:</span> <span id="p1-coord">---</span>
-            </div>
-            <div class="measure-row">
-                <span>P2:</span> <span id="p2-coord">---</span>
-            </div>
-            <hr>
-            <div class="result-row">
-                <span class="label">Distance</span>
-                <span id="distance-value">0.00</span>
-                
-                <!-- Unit Switcher -->
-                <select id="unit-selector">
-                    <option value="m">m</option>
-                    <option value="cm">cm</option>
-                    <option value="in">in</option>
-                    <option value="ft">ft</option>
+        <!-- Crosshair in center -->
+        <div id="crosshair"></div>
+
+        <!-- Bottom Panel -->
+        <div id="bottom-panel">
+            <div class="result-container">
+                <div>
+                    <span class="label" style="font-size: 0.8rem; color:#aaa;">DISTANCE</span><br>
+                    <span id="distance-val" class="distance-display">0.00</span>
+                </div>
+                <select id="unit-select" class="select-unit">
+                    <option value="m">Meters (m)</option>
+                    <option value="cm">Centimeters (cm)</option>
+                    <option value="in">Inches (in)</option>
+                    <option value="ft">Feet (ft)</option>
                 </select>
             </div>
             
-            <!-- Controls -->
-            <div class="button-row">
-                <button id="action-btn" class="primary-btn">Set Point 1</button>
-                <button id="reset-btn" class="secondary-btn">Reset</button>
+            <div class="btn-row">
+                <!-- Main Action Button -->
+                <button id="place-point-btn" class="action-btn">Set Point 1</button>
+                <button id="reset-btn" class="reset-btn">Reset</button>
             </div>
         </div>
     </div>
 
-    <!-- Import Map (For Three.js) -->
+    <!-- THREE.JS IMPORTS (Using ES Modules via ImportMap) -->
     <script type="importmap">
         {
             "imports": {
@@ -67,8 +187,254 @@
         }
     </script>
 
-    <!-- Main Logic -->
-    <script type="module" src="script.js"></script>
+    <script type="module">
+        import * as THREE from 'three';
 
+        // Variables
+        let camera, scene, renderer;
+        let controller;
+        let reticle;
+        let hitTestSource = null;
+        let hitTestSourceRequested = false;
+        
+        let measurements = []; // Array of Points [Vector3, Vector3]
+        let currentLine = null;
+        let pointMeshes = [];
+
+        // DOM Elements
+        const startBtn = document.getElementById('start-ar-btn');
+        const overlay = document.getElementById('ar-overlay');
+        const startScreen = document.getElementById('start-screen');
+        const instructionFn = document.getElementById('instruction');
+        const placeBtn = document.getElementById('place-point-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const distVal = document.getElementById('distance-val');
+        const unitSel = document.getElementById('unit-select');
+        const errorMsg = document.getElementById('error-msg');
+
+        // Check for WebXR support
+        if (navigator.xr) {
+            navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                if (!supported) {
+                    errorMsg.style.display = 'block';
+                    errorMsg.innerText = "WebXR AR not supported on this device/browser.";
+                    startBtn.disabled = true;
+                    startBtn.innerText = "Unsupported";
+                    startBtn.style.opacity = "0.5";
+                }
+            });
+        } else {
+             errorMsg.style.display = 'block';
+             errorMsg.innerText = "WebXR not found (Requires HTTPS or Localhost).";
+             startBtn.disabled = true;
+        }
+
+        startBtn.addEventListener('click', initAR);
+
+        async function initAR() {
+            // Initialize Three.js Scene
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+            // Lighting
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 3);
+            scene.add(light);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.xr.enabled = true; // Enabled XR
+            document.body.appendChild(renderer.domElement);
+
+            // Create a Reticle (The aiming ring)
+            const ringGeo = new THREE.RingGeometry(0.15, 0.2, 32).rotateX(-Math.PI / 2);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 }); // Green Ring
+            reticle = new THREE.Mesh(ringGeo, ringMat);
+            reticle.matrixAutoUpdate = false;
+            reticle.visible = false;
+            scene.add(reticle);
+
+            // Start Session
+            try {
+                // IMPORTANT: This 'dom-overlay' config is what keeps your HTML visible
+                const session = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test', 'dom-overlay'], 
+                    domOverlay: { root: document.getElementById('ar-overlay') }
+                });
+
+                renderer.xr.setReferenceSpaceType('local');
+                renderer.xr.setSession(session);
+
+                // UI Cleanup
+                startScreen.style.display = 'none';
+                overlay.style.display = 'block';
+                
+                // Animation Loop
+                renderer.setAnimationLoop(render);
+
+            } catch (e) {
+                console.error(e);
+                alert("Failed to start AR: " + e.message);
+                // Usually happens if 'dom-overlay' is requested but not supported,
+                // or if site is http not https.
+            }
+        }
+
+        function render(timestamp, frame) {
+            if (frame) {
+                const session = renderer.xr.getSession();
+                const referenceSpace = renderer.xr.getReferenceSpace();
+
+                // 1. Setup Hit Test (only runs once)
+                if (!hitTestSourceRequested) {
+                    session.requestReferenceSpace('viewer').then((refSpace) => {
+                        session.requestHitTestSource({ space: refSpace }).then((source) => {
+                            hitTestSource = source;
+                        });
+                    });
+                    
+                    // Session Ended Handler
+                    session.addEventListener('end', () => {
+                        hitTestSourceRequested = false;
+                        hitTestSource = null;
+                        overlay.style.display = 'none';
+                        startScreen.style.display = 'flex';
+                        resetApp();
+                        // reload page to be clean
+                        window.location.reload(); 
+                    });
+                    
+                    hitTestSourceRequested = true;
+                }
+
+                // 2. Perform Hit Test (runs every frame)
+                if (hitTestSource) {
+                    const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+                    if (hitTestResults.length > 0) {
+                        const hit = hitTestResults[0];
+                        
+                        // Reticle Visible - Surface Found
+                        reticle.visible = true;
+                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+                        
+                        // Update Instructions if not measuring yet
+                        if (measurements.length === 0) {
+                            instructionFn.innerText = "Target found! Tap 'Set Point 1'";
+                            instructionFn.style.color = "#4facfe";
+                        }
+                    } else {
+                        // Reticle Hidden - Looking for Surface
+                        reticle.visible = false;
+                        if (measurements.length === 0) {
+                            instructionFn.innerText = "Point at floor/wall & move phone slowly...";
+                            instructionFn.style.color = "white";
+                        }
+                    }
+                }
+            }
+            renderer.render(scene, camera);
+        }
+
+        // --- MEASUREMENT LOGIC ---
+
+        placeBtn.addEventListener('click', (e) => {
+            // Prevent event from bubbling
+            e.preventDefault(); 
+            e.stopPropagation();
+
+            if (!reticle.visible) {
+                alert("Please aim at a surface first (Green ring must be visible).");
+                return;
+            }
+
+            if (measurements.length >= 2) return;
+
+            // 1. Get position from reticle
+            const pointPosition = new THREE.Vector3();
+            pointPosition.setFromMatrixPosition(reticle.matrix);
+            measurements.push(pointPosition);
+
+            // 2. Add visual Marker
+            addMarker(pointPosition);
+
+            // 3. Update State
+            if (measurements.length === 1) {
+                placeBtn.innerText = "Set Point 2";
+                instructionFn.innerText = "Point 1 Set. Find second point.";
+            } else if (measurements.length === 2) {
+                placeBtn.innerText = "Completed";
+                placeBtn.style.opacity = "0.5";
+                placeBtn.disabled = true;
+                
+                instructionFn.innerText = "Distance Calculated!";
+                
+                drawLine();
+                calculateDistance();
+            }
+        });
+
+        resetBtn.addEventListener('click', resetApp);
+        
+        unitSel.addEventListener('change', () => {
+             if (measurements.length === 2) calculateDistance();
+        });
+
+        function addMarker(position) {
+            const material = new THREE.MeshPhongMaterial({ color: 0xff3333 });
+            const geometry = new THREE.SphereGeometry(0.015, 32, 32); // 1.5cm radius
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(position);
+            scene.add(mesh);
+            pointMeshes.push(mesh);
+        }
+
+        function drawLine() {
+            if (measurements.length !== 2) return;
+            
+            const material = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 4 });
+            const geometry = new THREE.BufferGeometry().setFromPoints(measurements);
+            
+            currentLine = new THREE.Line(geometry, material);
+            scene.add(currentLine);
+        }
+
+        function calculateDistance() {
+            if (measurements.length !== 2) return;
+            
+            const distMeters = measurements[0].distanceTo(measurements[1]);
+            const unit = unitSel.value;
+            let finalVal = 0;
+
+            if (unit === 'm') finalVal = distMeters;
+            if (unit === 'cm') finalVal = distMeters * 100;
+            if (unit === 'in') finalVal = distMeters * 39.3701;
+            if (unit === 'ft') finalVal = distMeters * 3.28084;
+
+            distVal.innerText = finalVal.toFixed(2);
+        }
+
+        function resetApp() {
+            measurements = [];
+            
+            // Clean Scene
+            pointMeshes.forEach(mesh => scene.remove(mesh));
+            pointMeshes = [];
+            if (currentLine) {
+                scene.remove(currentLine);
+                currentLine = null;
+            }
+
+            // Reset UI
+            placeBtn.innerText = "Set Point 1";
+            placeBtn.disabled = false;
+            placeBtn.style.opacity = "1";
+            distVal.innerText = "0.00";
+            instructionFn.innerText = "App Reset. Aim at surface.";
+        }
+
+    </script>
 </body>
 </html>
